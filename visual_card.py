@@ -17,22 +17,59 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# TEMA (editable por el agente disenador-visual). Paleta y tipografía.
+# PALETAS (editables por el agente disenador-visual). El render ROTA al azar
+# una de estas en cada tarjeta, para dar variedad visual al feed.
+# Todas tienen título blanco + texto claro sobre degradado rico = legibles.
 # ---------------------------------------------------------------------------
-THEME = {
-    # Degradado de fondo (diagonal). Vivo pero adulto.
-    "bg": "linear-gradient(135deg, #5b2a86 0%, #2b3a9e 55%, #1f6fb2 100%)",
+PALETTES = [
+    {  # violeta → azul
+        "bg": "linear-gradient(135deg,#5b2a86 0%,#2b3a9e 55%,#1f6fb2 100%)",
+        "badge_bg": "linear-gradient(135deg,#ffd24d 0%,#ff8a3d 100%)",
+        "badge_text": "#2a1a4a", "accent": "#ffd24d",
+    },
+    {  # atardecer rosa-magenta
+        "bg": "linear-gradient(135deg,#4a1c40 0%,#8e2d6b 55%,#d6456f 100%)",
+        "badge_bg": "linear-gradient(135deg,#ffe08a 0%,#ffb24d 100%)",
+        "badge_text": "#3a142e", "accent": "#ffd9a0",
+    },
+    {  # esmeralda
+        "bg": "linear-gradient(135deg,#08312a 0%,#0f5d4a 55%,#1f8f6a 100%)",
+        "badge_bg": "linear-gradient(135deg,#ffd24d 0%,#ffb03a 100%)",
+        "badge_text": "#06281f", "accent": "#ffe08a",
+    },
+    {  # noche elegante (azul muy oscuro + coral)
+        "bg": "linear-gradient(135deg,#14142b 0%,#1b2450 55%,#243b6b 100%)",
+        "badge_bg": "linear-gradient(135deg,#ff6b6b 0%,#e94560 100%)",
+        "badge_text": "#ffffff", "accent": "#ff6b81",
+    },
+    {  # océano + ámbar
+        "bg": "linear-gradient(135deg,#04263f 0%,#0a4a73 55%,#1378a6 100%)",
+        "badge_bg": "linear-gradient(135deg,#ffc145 0%,#ff9a3d 100%)",
+        "badge_text": "#042233", "accent": "#ffc145",
+    },
+    {  # ciruela intenso
+        "bg": "linear-gradient(135deg,#2a0a3a 0%,#5a189a 55%,#8e3bd6 100%)",
+        "badge_bg": "linear-gradient(135deg,#ffd60a 0%,#ffb703 100%)",
+        "badge_text": "#2a0a3a", "accent": "#ffd60a",
+    },
+]
+
+# Elementos comunes a todas las paletas.
+COMMON = {
     "title_color": "#ffffff",
-    "item_color": "#eaf0ff",
-    "badge_bg": "linear-gradient(135deg, #ffd24d 0%, #ff8a3d 100%)",  # insignia número
-    "badge_text": "#2a1a4a",
-    "accent": "#ffd24d",          # línea de acento bajo el título
+    "item_color": "#eef2ff",
     "footer_color": "rgba(255,255,255,0.55)",
     "font": "'Poppins', 'Segoe UI', system-ui, sans-serif",
-    "handle": "",                 # p.ej. "@tucuenta" — vacío = sin pie
+    "handle": "",                 # vacío = sin marca de agua
 }
 
 W, H = 1080, 1350
+
+
+def _pick_theme() -> dict:
+    """Devuelve una paleta al azar fusionada con los elementos comunes."""
+    import random
+    return {**COMMON, **random.choice(PALETTES)}
 
 
 def _tmp_png() -> Path:
@@ -50,8 +87,7 @@ def _sizes(n_items: int) -> tuple[int, int]:
     return 52, 30
 
 
-def _listicle_html(title: str, items: list[str]) -> str:
-    t = THEME
+def _listicle_html(title: str, items: list[str], t: dict) -> str:
     title_size, item_size = _sizes(len(items))
     rows = "\n".join(
         f'<li><span class="badge">{i}</span><span class="txt">{_html.escape(it)}</span></li>'
@@ -94,8 +130,7 @@ def _listicle_html(title: str, items: list[str]) -> str:
 </body></html>"""
 
 
-def _quote_html(text: str) -> str:
-    t = THEME
+def _quote_html(text: str, t: dict) -> str:
     handle = (
         f'<div class="footer">{_html.escape(t["handle"])}</div>' if t["handle"] else ""
     )
@@ -132,20 +167,22 @@ def _render_html(html_str: str) -> Path:
 
 
 def render_listicle_card(title: str, items: list[str], footer: str | None = None) -> Path:
+    t = _pick_theme()
     if footer is not None:
-        THEME["handle"] = footer
+        t["handle"] = footer
     try:
-        return _render_html(_listicle_html(title, items))
+        return _render_html(_listicle_html(title, items, t))
     except Exception as e:
         log.warning(f"Render HTML falló ({e}); uso respaldo Pillow.")
         return _render_listicle_pillow(title, items)
 
 
 def render_quote_card(text: str, footer: str | None = None) -> Path:
+    t = _pick_theme()
     if footer is not None:
-        THEME["handle"] = footer
+        t["handle"] = footer
     try:
-        return _render_html(_quote_html(text))
+        return _render_html(_quote_html(text, t))
     except Exception as e:
         log.warning(f"Render HTML (quote) falló ({e}); uso respaldo Pillow.")
         return _render_listicle_pillow(text, [])
