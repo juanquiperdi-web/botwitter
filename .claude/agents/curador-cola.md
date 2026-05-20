@@ -47,8 +47,11 @@ SEX_SYSTEM y los bancos de ángulos) y respétalas. Resumen:
    - Escribe los tweets respetando las reglas.
    - AUTOREVÍSALO: ¿gancho fuerte? ¿cierre respondible? ¿≤280? ¿sin reglas rotas?
      Si no pasa, reescríbelo. Sé exigente.
-4. Vuelca el lote a un archivo temporal `_cola_lote.json` con Write y ejecuta
-   `python queue_manager.py add-file _cola_lote.json`.
-5. Reporta: cuántos añadiste por modo y el `status` final de la cola.
+4. Vuelca el lote a `_cola_lote.json` con Write (array JSON de items).
+   - En modo AUTOMÁTICO (lanzado por fill_queue.ps1): ahí termina tu trabajo; el
+     script ejecuta el `add-file`. NO lo ejecutes tú.
+   - En modo MANUAL (te invoca una persona): ejecuta tú
+     `python queue_manager.py add-file _cola_lote.json` y luego `status`.
+5. Reporta cuántos preparaste por modo.
 
 Calidad sobre cantidad: mejor 6 posts que de verdad enganchan que 20 mediocres.

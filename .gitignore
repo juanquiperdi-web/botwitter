@@ -23,7 +23,10 @@ debug/
 _archive_unused/
 _cola_lote.json
 
-# NOTA: content_queue.json SÍ se versiona — es el puente curador(remoto) → bot(local).
+# Cola de contenido: estado LOCAL (curador local la llena, bot local la consume).
+content_queue.json
+_cola_lote.json
+curador.log
 
 # Config local de Claude Code (no compartir)
 .claude/settings.local.json
