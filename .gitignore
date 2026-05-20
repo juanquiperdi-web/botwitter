@@ -1,0 +1,29 @@
+# === SECRETOS Y SESIÓN (NUNCA subir) ===
+.env
+.env.*
+!.env.example
+chrome_profile/
+
+# === Logs y caché ===
+*.log
+__pycache__/
+*.pyc
+*.pyo
+
+# === Estado de runtime (específico de cada máquina) ===
+publish_state.json
+following_state.json
+x_radar_state.json
+match_fixtures.json
+match_published.json
+news_cache.json
+
+# === Restos / temporales ===
+debug/
+_archive_unused/
+_cola_lote.json
+
+# NOTA: content_queue.json SÍ se versiona — es el puente curador(remoto) → bot(local).
+
+# Config local de Claude Code (no compartir)
+.claude/settings.local.json
