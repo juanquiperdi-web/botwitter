@@ -1,72 +1,38 @@
 """
-Genera tarjetas visuales (PNG) para los posts: "texto sobre fondo".
-Pensado para los listicles ("10 señales de…") y para citas/curiosidades.
+Tarjetas visuales (PNG) para los posts: diseño en HTML/CSS renderizado a imagen
+con Playwright (Chromium headless) → calidad tipo Canva. Si Playwright falla,
+cae a un render simple con Pillow (respaldo).
 
-El bot las adjunta al publicar (twitter_poster acepta image_path). El estilo vive
-en STYLE para que el agente `disenador-visual` lo pueda afinar sin tocar la lógica.
+El bot las adjunta al publicar. El diseño vive en THEME + el template HTML, para
+que el agente `disenador-visual` lo afine sin tocar la lógica.
 
-Uso:
     from visual_card import render_listicle_card, render_quote_card
     path = render_listicle_card("7 señales de X", ["punto 1", "punto 2", ...])
-    # -> Path a un PNG temporal listo para adjuntar
 """
+import html as _html
+import logging
 import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# ESTILO (editable por el agente disenador-visual)
+# TEMA (editable por el agente disenador-visual). Paleta y tipografía.
 # ---------------------------------------------------------------------------
-STYLE = {
-    "size": (1080, 1350),          # 4:5 vertical (formato que más ocupa en el feed)
-    "bg_top": (24, 26, 48),        # degradado vertical: arriba
-    "bg_bottom": (12, 16, 32),     # ...abajo
-    "title_color": (255, 255, 255),
-    "item_color": (223, 230, 242),
-    "accent": (88, 166, 255),      # número de cada punto + línea bajo el título
-    "footer_color": (130, 140, 165),
-    "margin": 80,
-    "title_size": 60,
-    "item_size": 42,
-    "footer_size": 30,
-    "line_gap": 16,                # separación entre líneas del mismo punto
-    "item_gap": 30,                # separación entre puntos
-    "font_regular": "C:/Windows/Fonts/segoeui.ttf",
-    "font_bold": "C:/Windows/Fonts/segoeuib.ttf",
-    "footer": "",                  # handle/marca opcional, p.ej. "@tucuenta"
+THEME = {
+    # Degradado de fondo (diagonal). Vivo pero adulto.
+    "bg": "linear-gradient(135deg, #5b2a86 0%, #2b3a9e 55%, #1f6fb2 100%)",
+    "title_color": "#ffffff",
+    "item_color": "#eaf0ff",
+    "badge_bg": "linear-gradient(135deg, #ffd24d 0%, #ff8a3d 100%)",  # insignia número
+    "badge_text": "#2a1a4a",
+    "accent": "#ffd24d",          # línea de acento bajo el título
+    "footer_color": "rgba(255,255,255,0.55)",
+    "font": "'Poppins', 'Segoe UI', system-ui, sans-serif",
+    "handle": "",                 # p.ej. "@tucuenta" — vacío = sin pie
 }
 
-
-def _font(bold: bool, size: int) -> ImageFont.FreeTypeFont:
-    path = STYLE["font_bold"] if bold else STYLE["font_regular"]
-    return ImageFont.truetype(path, size)
-
-
-def _gradient(size, top, bottom) -> Image.Image:
-    w, h = size
-    base = Image.new("RGB", size, top)
-    draw = ImageDraw.Draw(base)
-    for y in range(h):
-        t = y / max(1, h - 1)
-        col = tuple(int(top[i] + (bottom[i] - top[i]) * t) for i in range(3))
-        draw.line([(0, y), (w, y)], fill=col)
-    return base
-
-
-def _wrap(draw, text, font, max_w) -> list[str]:
-    words = text.split()
-    lines, cur = [], ""
-    for wd in words:
-        test = (cur + " " + wd).strip()
-        if draw.textlength(test, font=font) <= max_w:
-            cur = test
-        else:
-            if cur:
-                lines.append(cur)
-            cur = wd
-    if cur:
-        lines.append(cur)
-    return lines
+W, H = 1080, 1350
 
 
 def _tmp_png() -> Path:
@@ -75,110 +41,152 @@ def _tmp_png() -> Path:
     return Path(f.name)
 
 
-def render_listicle_card(title: str, items: list[str], footer: str | None = None) -> Path:
-    """Renderiza un listicle como tarjeta. Auto-reduce el tamaño de los puntos si
-    no caben, para que SIEMPRE quepa todo en la imagen."""
-    s = STYLE
-    w, h = s["size"]
-    margin = s["margin"]
-    max_w = w - 2 * margin
-    footer = footer if footer is not None else s["footer"]
+def _sizes(n_items: int) -> tuple[int, int]:
+    """Tamaño de fuente (título, puntos) según cuántos puntos haya, para que quepa."""
+    if n_items <= 6:
+        return 60, 40
+    if n_items <= 8:
+        return 56, 35
+    return 52, 30
 
-    img = _gradient(s["size"], s["bg_top"], s["bg_bottom"])
-    draw = ImageDraw.Draw(img)
 
-    title_font = _font(True, s["title_size"])
-    footer_font = _font(True, s["footer_size"])
+def _listicle_html(title: str, items: list[str]) -> str:
+    t = THEME
+    title_size, item_size = _sizes(len(items))
+    rows = "\n".join(
+        f'<li><span class="badge">{i}</span><span class="txt">{_html.escape(it)}</span></li>'
+        for i, it in enumerate(items, 1)
+    )
+    handle = (
+        f'<div class="footer">{_html.escape(t["handle"])}</div>' if t["handle"] else ""
+    )
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  html,body {{ width:{W}px; height:{H}px; }}
+  body {{
+    background:{t['bg']}; font-family:{t['font']};
+    padding:90px 80px; display:flex; flex-direction:column;
+  }}
+  h1 {{
+    color:{t['title_color']}; font-weight:800; font-size:{title_size}px;
+    line-height:1.12; letter-spacing:-0.5px; margin-bottom:18px;
+  }}
+  .rule {{ width:130px; height:8px; border-radius:8px; background:{t['accent']}; margin-bottom:44px; }}
+  ul {{ list-style:none; display:flex; flex-direction:column; gap:26px; }}
+  li {{ display:flex; align-items:center; gap:26px; }}
+  .badge {{
+    flex:0 0 auto; width:62px; height:62px; border-radius:50%;
+    background:{t['badge_bg']}; color:{t['badge_text']};
+    font-weight:800; font-size:30px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,0.25);
+  }}
+  .txt {{ color:{t['item_color']}; font-weight:600; font-size:{item_size}px; line-height:1.25; }}
+  .footer {{ margin-top:auto; color:{t['footer_color']}; font-weight:600; font-size:30px; }}
+</style></head>
+<body>
+  <h1>{_html.escape(title)}</h1>
+  <div class="rule"></div>
+  <ul>{rows}</ul>
+  {handle}
+</body></html>"""
 
-    # Título (envuelto)
-    title_lines = _wrap(draw, title, title_font, max_w)
-    title_h = sum(title_font.getbbox(l)[3] - title_font.getbbox(l)[1] + 8 for l in title_lines)
 
-    footer_h = (footer_font.getbbox(footer)[3] + 20) if footer else 0
-    top_y = margin
-    content_top = top_y + title_h + 40           # tras título + línea de acento
-    content_bottom = h - margin - footer_h
-    avail_h = content_bottom - content_top
+def _quote_html(text: str) -> str:
+    t = THEME
+    handle = (
+        f'<div class="footer">{_html.escape(t["handle"])}</div>' if t["handle"] else ""
+    )
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  html,body {{ width:{W}px; height:{H}px; }}
+  body {{ background:{t['bg']}; font-family:{t['font']}; padding:110px 90px;
+          display:flex; flex-direction:column; justify-content:center; }}
+  .quote {{ color:{t['title_color']}; font-weight:800; font-size:62px; line-height:1.3; letter-spacing:-0.5px; }}
+  .footer {{ position:absolute; bottom:90px; left:90px; color:{t['footer_color']}; font-weight:600; font-size:30px; }}
+</style></head>
+<body><div class="quote">{_html.escape(text)}</div>{handle}</body></html>"""
 
-    # Ajuste automático del tamaño de los puntos para que quepan.
-    item_size = s["item_size"]
-    while item_size >= 26:
-        item_font = _font(False, item_size)
-        num_font = _font(True, item_size)
-        total = 0
-        per_item_lines = []
-        for it in items:
-            wrapped = _wrap(draw, it, item_font, max_w - 70)  # 70px para el número
-            per_item_lines.append(wrapped)
-            lh = item_font.getbbox("Ag")[3] - item_font.getbbox("Ag")[1]
-            total += len(wrapped) * (lh + s["line_gap"]) + s["item_gap"]
-        if total <= avail_h:
-            break
-        item_size -= 3
 
-    # --- Dibujo ---
-    # Título
-    y = top_y
-    for l in title_lines:
-        draw.text((margin, y), l, font=title_font, fill=s["title_color"])
-        bb = title_font.getbbox(l)
-        y += (bb[3] - bb[1]) + 8
-    # Línea de acento bajo el título
-    draw.rectangle([margin, y + 10, margin + 120, y + 16], fill=s["accent"])
-
-    # Puntos numerados — pegados bajo el título (alineación superior, más cohesivo).
-    y = content_top
-    lh = item_font.getbbox("Ag")[3] - item_font.getbbox("Ag")[1]
-    for idx, wrapped in enumerate(per_item_lines, 1):
-        draw.text((margin, y), f"{idx}", font=num_font, fill=s["accent"])
-        for j, line in enumerate(wrapped):
-            draw.text((margin + 70, y), line, font=item_font, fill=s["item_color"])
-            y += lh + s["line_gap"]
-        y += s["item_gap"]
-
-    # Footer
-    if footer:
-        draw.text((margin, h - margin - footer_font.getbbox(footer)[3]),
-                  footer, font=footer_font, fill=s["footer_color"])
-
+def _render_html(html_str: str) -> Path:
+    """Renderiza un HTML a PNG 1080x1350 con Playwright (Chromium headless)."""
+    from playwright.sync_api import sync_playwright
     out = _tmp_png()
-    img.save(out, "PNG")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=["--no-sandbox"])
+        page = browser.new_page(viewport={"width": W, "height": H},
+                                device_scale_factor=2)
+        page.set_content(html_str, wait_until="networkidle")
+        try:
+            page.evaluate("document.fonts.ready")
+            page.wait_for_timeout(250)
+        except Exception:
+            pass
+        page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
+        browser.close()
     return out
 
 
+def render_listicle_card(title: str, items: list[str], footer: str | None = None) -> Path:
+    if footer is not None:
+        THEME["handle"] = footer
+    try:
+        return _render_html(_listicle_html(title, items))
+    except Exception as e:
+        log.warning(f"Render HTML falló ({e}); uso respaldo Pillow.")
+        return _render_listicle_pillow(title, items)
+
+
 def render_quote_card(text: str, footer: str | None = None) -> Path:
-    """Tarjeta de cita/curiosidad: un bloque de texto centrado verticalmente.
-    Útil para curiosity / personality / sexo si se quiere imagen en vez de texto."""
-    s = STYLE
-    w, h = s["size"]
-    margin = s["margin"]
-    max_w = w - 2 * margin
-    footer = footer if footer is not None else s["footer"]
+    if footer is not None:
+        THEME["handle"] = footer
+    try:
+        return _render_html(_quote_html(text))
+    except Exception as e:
+        log.warning(f"Render HTML (quote) falló ({e}); uso respaldo Pillow.")
+        return _render_listicle_pillow(text, [])
 
-    img = _gradient(s["size"], s["bg_top"], s["bg_bottom"])
+
+# ---------------------------------------------------------------------------
+# RESPALDO Pillow (por si Playwright no está disponible). Diseño simple.
+# ---------------------------------------------------------------------------
+def _render_listicle_pillow(title: str, items: list[str]) -> Path:
+    from PIL import Image, ImageDraw, ImageFont
+    bg_top, bg_bottom = (40, 30, 70), (25, 35, 90)
+    img = Image.new("RGB", (W, H), bg_top)
     draw = ImageDraw.Draw(img)
-    footer_font = _font(True, s["footer_size"])
+    for y in range(H):
+        tt = y / (H - 1)
+        draw.line([(0, y), (W, y)],
+                  fill=tuple(int(bg_top[i] + (bg_bottom[i] - bg_top[i]) * tt) for i in range(3)))
+    tf = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 58)
+    itf = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", 40)
+    margin = 80
 
-    # Tamaño de fuente que haga que el texto ocupe bien sin desbordar.
-    size = 64
-    while size >= 34:
-        font = _font(True, size)
-        lines = _wrap(draw, text, font, max_w)
-        lh = font.getbbox("Ag")[3] - font.getbbox("Ag")[1]
-        block_h = len(lines) * (lh + 18)
-        if block_h <= h - 2 * margin - 80:
-            break
-        size -= 4
+    def wrap(txt, font, mw):
+        words, lines, cur = txt.split(), [], ""
+        for w in words:
+            if draw.textlength((cur + " " + w).strip(), font=font) <= mw:
+                cur = (cur + " " + w).strip()
+            else:
+                lines.append(cur); cur = w
+        if cur:
+            lines.append(cur)
+        return lines
 
-    y = (h - block_h) // 2
-    for line in lines:
-        draw.text((margin, y), line, font=font, fill=s["title_color"])
-        y += lh + 18
-
-    if footer:
-        draw.text((margin, h - margin - footer_font.getbbox(footer)[3]),
-                  footer, font=footer_font, fill=s["footer_color"])
-
+    y = margin
+    for ln in wrap(title, tf, W - 2 * margin):
+        draw.text((margin, y), ln, font=tf, fill=(255, 255, 255)); y += 66
+    draw.rectangle([margin, y + 8, margin + 120, y + 16], fill=(255, 210, 77)); y += 60
+    for i, it in enumerate(items, 1):
+        draw.text((margin, y), f"{i}", font=tf, fill=(255, 210, 77))
+        for ln in wrap(it, itf, W - 2 * margin - 70):
+            draw.text((margin + 70, y), ln, font=itf, fill=(234, 240, 255)); y += 52
+        y += 24
     out = _tmp_png()
     img.save(out, "PNG")
     return out
@@ -196,11 +204,5 @@ if __name__ == "__main__":
             "Se ríe de sí mismo con facilidad",
             "Observa antes de opinar",
         ],
-        footer="",
     )
     print("Listicle card:", p, p.stat().st_size, "bytes")
-    q = render_quote_card(
-        "Tu cerebro recuerda mejor lo que dejaste a medias que lo que terminaste. "
-        "Por eso no puedes dejar de pensar en ese mensaje sin responder."
-    )
-    print("Quote card:", q, q.stat().st_size, "bytes")
