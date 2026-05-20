@@ -175,11 +175,23 @@ def run_listicle_post() -> bool:
         log.error(f"Listicle generación falló: {e}")
         return False
 
-    tweets = render_listicle_thread(data)
-    log.info(f"Listicle: '{data['raw_title']}' → {len(tweets)} tweets")
-    for i, t in enumerate(tweets):
-        log.info(f"  tweet {i+1} ({len(t)} chars): {t[:60]}…")
+    # Formato preferido: TARJETA VISUAL (texto sobre fondo) + caption con la pregunta.
+    try:
+        from visual_card import render_listicle_card
+        from twitter_poster import post_tweet
+        card = render_listicle_card(data["raw_title"], data["items"])
+        caption = data.get("cta", "").strip() or "¿Cuántas cumples?"
+        log.info(f"Listicle (tarjeta): '{data['raw_title']}' | caption: {caption}")
+        result = post_tweet(caption, image_path=card)
+        log.info(f"Listicle (imagen) publicado: id={result}")
+        _mark_niche_title(data["raw_title"])
+        return True
+    except Exception as e:
+        log.warning(f"Listicle imagen falló ({e}); caigo a hilo de texto.")
 
+    # Respaldo: hilo de texto.
+    tweets = render_listicle_thread(data)
+    log.info(f"Listicle (texto): '{data['raw_title']}' → {len(tweets)} tweets")
     try:
         result = post_thread(tweets)
         log.info(f"Listicle publicado: id={result}")
