@@ -63,16 +63,27 @@ MENTION_MAX_REPLIES_PER_HOUR = 5
 # Modos: listicle ("10 hábitos de…", hilo) | personality ("lo que tu forma de X
 # dice de ti") | curiosity (dato curioso de comportamiento) | reply.
 # Concentramos los formatos de mayor alcance (listicle) en los picos.
+# --- HORARIO SOLO-VÍDEO (todos los slots publican un vídeo + caption corto) ---
+# El caption rota entre curiosidad / personalidad / atracción dentro de run_video_post.
+# Vídeo: Reddit (viral) con Pexels de respaldo.
 TWEET_SCHEDULE = {
-    "09:30": ("listicle", None),      # peak mañana — lista larga (hilo)
-    "12:00": ("curiosity", None),     # dato curioso early lunch
-    "14:00": ("personality", None),   # gancho de personalidad en lunch peak
-    "15:00": ("country_data", None),  # "media por país" con datos reales (Banco Mundial)
-    "17:00": ("curiosity", None),     # tarde
-    "20:00": ("listicle", None),      # prime time — lista larga (hilo)
-    "21:30": ("personality", None),   # "lo que tu forma de X dice de ti" (estilo "el del coche")
-    "23:00": ("sexo", None),          # psicología de atracción/relaciones — scroll nocturno / latam
+    "09:30": ("video", None),
+    "12:00": ("video", None),
+    "14:00": ("video", None),
+    "15:00": ("video", None),
+    "17:00": ("video", None),
+    "20:00": ("video", None),
+    "21:30": ("video", None),
+    "23:00": ("video", None),
 }
+
+# --- HORARIO ANTERIOR (texto/imagen) — conservado por si se quiere revertir ---
+# TWEET_SCHEDULE_TEXTO = {
+#     "09:30": ("listicle", None), "12:00": ("curiosity", None),
+#     "14:00": ("personality", None), "15:00": ("country_data", None),
+#     "17:00": ("curiosity", None), "20:00": ("listicle", None),
+#     "21:30": ("personality", None), "23:00": ("sexo", None),
+# }
 THREAD_MIN = 4
 THREAD_MAX = 5
 

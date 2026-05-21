@@ -21,6 +21,18 @@ USER_AGENT = "GeopoliticsBot/1.0 (curated curiosity content)"
 # entre estos; si no encuentra, acepta imagen del MISMO tema.
 # Orden: VÍDEO-PESADO primero, imagen/texto como respaldo.
 TOPIC_SUBREDDITS = {
+    # Vídeo enganchón para posts de vídeo (clips virales/satisfying/curiosos).
+    # OJO: contenido de terceros — vetar copyright; preferir Pexels si hay duda.
+    "video": [
+        "oddlysatisfying",
+        "BeAmazed",
+        "Damnthatsinteresting",
+        "interestingasfuck",
+        "NatureIsFuckingLit",
+        "nextfuckinglevel",
+        "MadeMeSmile",
+        "humansbeingbros",
+    ],
     # Nicho psicología / autoconocimiento (curiosidades de comportamiento, texto):
     "psicologia": [
         "psychology",

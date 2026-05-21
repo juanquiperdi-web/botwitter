@@ -365,8 +365,50 @@ def run_country_data_post() -> bool:
         return False
 
 
+def run_video_post() -> bool:
+    """Publica un VÍDEO (Reddit viral, Pexels de respaldo) con un caption corto
+    variado (curiosidad / personalidad / atracción)."""
+    import random
+    from video_source import get_video
+    from twitter_poster import post_tweet
+    from niche_generator import (
+        generate_curiosity_post, generate_personality_post, generate_sex_post,
+    )
+
+    # 1) Caption variado y corto (lo que mejor funciona sobre un vídeo).
+    label, fn = random.choice([
+        ("curiosidad", generate_curiosity_post),
+        ("personalidad", generate_personality_post),
+        ("atracción", generate_sex_post),
+    ])
+    try:
+        caption = fn()
+    except Exception as e:
+        log.error(f"Video caption ({label}) falló: {e}")
+        return False
+
+    # 2) Vídeo: Reddit primero (viral), Pexels de respaldo.
+    path, src, post = get_video(prefer="reddit", used_ids=_used_post_ids())
+    if not path:
+        log.error("Video: ninguna fuente devolvió vídeo")
+        return False
+    log.info(f"Video post: caption={label} | fuente={src} | {caption[:70]}")
+
+    # 3) Publicar vídeo + caption.
+    try:
+        result = post_tweet(caption, video_path=path)
+        log.info(f"Video publicado: id={result} (fuente {src})")
+        if post.get("id"):
+            _mark_published(0, post_id=post["id"])
+        return True
+    except Exception as e:
+        log.error(f"Video post falló: {e}")
+        return False
+
+
 # Mapa modo -> función de ejecución. Añadir un formato nuevo = una línea aquí.
 RUNNERS = {
+    "video":        run_video_post,
     "listicle":     run_listicle_post,
     "personality":  run_personality_post,
     "curiosity":    run_curiosity_post,
