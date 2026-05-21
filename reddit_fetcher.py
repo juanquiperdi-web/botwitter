@@ -24,14 +24,23 @@ TOPIC_SUBREDDITS = {
     # Vídeo enganchón para posts de vídeo (clips virales/satisfying/curiosos).
     # OJO: contenido de terceros — vetar copyright; preferir Pexels si hay duda.
     "video": [
-        "oddlysatisfying",
-        "BeAmazed",
-        "Damnthatsinteresting",
-        "interestingasfuck",
-        "NatureIsFuckingLit",
-        "nextfuckinglevel",
-        "MadeMeSmile",
-        "humansbeingbros",
+        # Mapeado a los 7 patrones de las cuentas de referencia (virales variados):
+        "oddlysatisfying",        # satisfying / proceso
+        "nextfuckinglevel",       # ingeniería / talento / skill
+        "BeAmazed",               # asombro
+        "Damnthatsinteresting",   # curioso / ciencia
+        "interestingasfuck",      # curioso
+        "CookingVideos",          # cocina
+        "foodhacks",              # trucos de cocina
+        "GifRecipes",             # recetas
+        "aww",                    # animales tiernos
+        "AnimalsBeingDerps",      # animales graciosos
+        "Awwducational",          # animales + dato curioso
+        "NatureIsFuckingLit",     # naturaleza / animales espectacular
+        "ContagiousLaughter",     # gracioso
+        "MadeMeSmile",            # feel-good / relatable
+        "humansbeingbros",        # gente ayudando (emotivo)
+        "educationalgifs",        # cómo funciona algo (asombro/ciencia)
     ],
     # Nicho psicología / autoconocimiento (curiosidades de comportamiento, texto):
     "psicologia": [

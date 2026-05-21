@@ -88,15 +88,25 @@ def get_pexels_video(query: str = "", max_size_mb: int = 14) -> Optional[Path]:
 
 
 # --------------------------- Reddit ---------------------------
-def get_reddit_video(used_ids: set | None = None) -> tuple[Optional[Path], dict]:
-    """Descarga un vídeo viral de los subreddits de vídeo. Devuelve (ruta, post_dict)."""
+def get_reddit_video(used_ids: set | None = None, attempts: int = 5) -> tuple[Optional[Path], dict]:
+    """Descarga un vídeo viral de los subreddits de vídeo. Reintenta con otro post
+    si la descarga falla (clips rotos/grandes), para no caer a Pexels por un fallo
+    puntual. Devuelve (ruta, post_dict)."""
     from reddit_fetcher import fetch_topic_post, download_media
-    post = fetch_topic_post("video", used_post_ids=used_ids or set(),
-                            require_media=True, prefer_video=True)
-    if not post or post.get("media_type") != "video":
-        return None, {}
-    path = download_media(post["media_url"], "video")
-    return path, (post or {})
+    used = set(used_ids or set())
+    for _ in range(attempts):
+        post = fetch_topic_post("video", used_post_ids=used,
+                                require_media=True, prefer_video=True)
+        if not post or post.get("media_type") != "video":
+            break
+        path = download_media(post["media_url"], "video")
+        if path:
+            return path, post
+        # Descarga fallida: excluimos este post y probamos otro.
+        if post.get("id"):
+            used.add(post["id"])
+        log.info(f"Descarga falló para r/{post.get('subreddit','')}; reintento otro clip.")
+    return None, {}
 
 
 # --------------------------- Orquestador ---------------------------

@@ -296,6 +296,38 @@ def generate_sex_post(angle: str | None = None) -> str:
     return _trim(text, 280)
 
 
+VIRAL_HOOK_SYSTEM = """Eres una cuenta de VÍDEOS VIRALES en español (estilo cuentas de "lo mejor de
+internet"). Te paso el título original de un clip viral (a veces en inglés o japonés).
+Escribe un CAPTION corto en español que enganche y dé ganas de ver y comentar.
+
+REGLAS:
+- MUY corto: 20-90 caracteres. Una frase.
+- En castellano natural. Tono cercano, con chispa.
+- Una reacción, un gancho o una micro-pregunta. NO describas el vídeo literalmente.
+- Puedes usar 1 emoji si encaja (opcional). Nada de hashtags ni enlaces.
+- Si el título no se entiende o está vacío, escribe un gancho genérico de asombro.
+
+EJEMPLOS:
+- Título "Wrapping circles in square paper" → "El nivel de satisfacción de esto no es normal"
+- Título "Chef puts egg in canned tuna" → "No sabía que necesitaba ver esto"
+- Título "Cat does a backflip" → "Este gato tiene más coordinación que yo 😮"
+- Título "Sand sculpture on beach" → "Y yo sin saber hacer ni un castillo"
+
+Devuelve SOLO el caption, sin comillas ni prefijos."""
+
+
+def generate_viral_hook(clip_title: str = "") -> str:
+    """Caption corto y enganchón para un clip viral, a partir de su título original."""
+    user = (
+        f"Título original del clip: {clip_title!r}\n\n"
+        "Escribe el caption corto en español. Solo el texto."
+        if clip_title else
+        "No hay título. Escribe un caption corto de asombro/gancho genérico en español. Solo el texto."
+    )
+    text = _clean(_chat(VIRAL_HOOK_SYSTEM, user, max_tokens=120, temperature=0.9))
+    return _trim(text, 200)
+
+
 def generate_curiosity_post(source: dict | None = None) -> str:
     """Si 'source' trae {title, selftext, subreddit} (de Reddit), lo reescribe.
     Si no, el LLM genera un dato curioso de psicología por su cuenta."""

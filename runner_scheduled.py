@@ -368,31 +368,24 @@ def run_country_data_post() -> bool:
 def run_video_post() -> bool:
     """Publica un VÍDEO (Reddit viral, Pexels de respaldo) con un caption corto
     variado (curiosidad / personalidad / atracción)."""
-    import random
     from video_source import get_video
     from twitter_poster import post_tweet
-    from niche_generator import (
-        generate_curiosity_post, generate_personality_post, generate_sex_post,
-    )
+    from niche_generator import generate_viral_hook
 
-    # 1) Caption variado y corto (lo que mejor funciona sobre un vídeo).
-    label, fn = random.choice([
-        ("curiosidad", generate_curiosity_post),
-        ("personalidad", generate_personality_post),
-        ("atracción", generate_sex_post),
-    ])
-    try:
-        caption = fn()
-    except Exception as e:
-        log.error(f"Video caption ({label}) falló: {e}")
-        return False
-
-    # 2) Vídeo: Reddit primero (viral), Pexels de respaldo.
+    # 1) Vídeo: Reddit primero (viral, con título), Pexels de respaldo.
     path, src, post = get_video(prefer="reddit", used_ids=_used_post_ids())
     if not path:
         log.error("Video: ninguna fuente devolvió vídeo")
         return False
-    log.info(f"Video post: caption={label} | fuente={src} | {caption[:70]}")
+
+    # 2) Caption corto y enganchón que REACCIONA al clip (usa su título original).
+    clip_title = post.get("title", "") if src == "reddit" else ""
+    try:
+        caption = generate_viral_hook(clip_title)
+    except Exception as e:
+        log.error(f"Video caption (hook) falló: {e}")
+        return False
+    log.info(f"Video post: fuente={src} | clip='{clip_title[:50]}' | caption={caption!r}")
 
     # 3) Publicar vídeo + caption.
     try:
