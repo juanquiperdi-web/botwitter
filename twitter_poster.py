@@ -85,6 +85,8 @@ def _open_context(p, headless: bool) -> BrowserContext:
         user_data_dir=str(PROFILE_DIR),
         channel="chrome",
         headless=headless,
+        # NOTA: navegador VISIBLE a propósito (headless lo bloquea X). Probado mover
+        # la ventana fuera de pantalla pero rompe el click del botón Postear.
         args=["--disable-blink-features=AutomationControlled"],
         viewport={"width": 1280, "height": 800},
     )
