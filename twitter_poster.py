@@ -31,6 +31,43 @@ def _dismiss_popups(page: Page) -> None:
         page.wait_for_timeout(300)
 
 
+def _click_post_and_confirm(page: Page, is_video: bool = False, label: str = "tweet") -> None:
+    """Pulsa el botón Postear esperando a que esté habilitado (el vídeo tarda en
+    procesar) y CONFIRMA que la publicación salió. Lanza RuntimeError si X muestra
+    error o si seguimos en el cuadro de redactar (no publicó)."""
+    btn = page.locator('[data-testid="tweetButton"]').first
+    deadline = 90000 if is_video else 20000   # ms; el vídeo necesita procesarse
+    waited = 0
+    while waited < deadline:
+        try:
+            if btn.count() and btn.get_attribute("aria-disabled") != "true":
+                break
+        except Exception:
+            pass
+        page.wait_for_timeout(1000)
+        waited += 1000
+    btn.click(timeout=10000)
+    page.wait_for_timeout(9000 if is_video else 5000)
+
+    # ¿Error de X? ("Algo salió mal, ...")
+    try:
+        if page.get_by_text("Algo salió mal").count() > 0:
+            _save_debug(page, f"{label}_x_error")
+            raise RuntimeError("X rechazó la publicación ('Algo salió mal') — ¿modo headless?")
+    except RuntimeError:
+        raise
+    except Exception:
+        pass
+
+    # Éxito esperado: el cuadro /compose/post se cierra (salimos de esa URL).
+    if "/compose/" in page.url:
+        # Damos un margen extra por si está cerrando.
+        page.wait_for_timeout(3000)
+        if "/compose/" in page.url and page.locator('[data-testid="tweetTextarea_0"]').count() > 0:
+            _save_debug(page, f"{label}_no_confirm")
+            raise RuntimeError("Publicación no confirmada: seguimos en el cuadro de redactar.")
+
+
 def _save_debug(page: Page, name: str) -> None:
     try:
         DEBUG_DIR.mkdir(exist_ok=True)
@@ -133,7 +170,9 @@ def _attach_media(page: Page, media_path: Path, is_video: bool = False, tweet_in
 
 
 def post_tweet(text: str, image_url: str = "", video_path: Path = None,
-               image_path: Path = None, headless: bool = True) -> str:
+               image_path: Path = None, headless: bool = False) -> str:
+    # NOTA: headless=False por defecto — X BLOQUEA la publicación en modo headless
+    # ("Algo salió mal"). Con navegador visible sí publica.
     if not image_path and image_url and not video_path:
         image_path = _download_image(image_url)
     media = video_path or image_path
@@ -143,19 +182,17 @@ def post_tweet(text: str, image_url: str = "", video_path: Path = None,
         page = context.pages[0] if context.pages else context.new_page()
         try:
             page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(2000)
-            _dismiss_popups(page)
+            page.wait_for_timeout(2500)
+            # OJO: NO pulsar Escape aquí — cierra el cuadro de publicar y te manda a /home.
 
             _type_into_textarea(page, 0, text)
             if media:
                 if _attach_media(page, media, is_video=is_video):
                     log.info(f"{'Vídeo' if is_video else 'Imagen'} adjuntado al tweet")
 
-            page.keyboard.press("Control+Enter")
-            page.wait_for_timeout(8000 if is_video else 6000)
-
+            _click_post_and_confirm(page, is_video=is_video, label="tweet")
             tweet_id = _extract_tweet_id(page)
-            log.info(f"Tweet publicado (id={tweet_id})")
+            log.info(f"Tweet publicado (id={tweet_id}, url={page.url})")
             return tweet_id
         except Exception:
             _save_debug(page, "error_single")
