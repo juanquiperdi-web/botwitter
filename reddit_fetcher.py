@@ -24,23 +24,19 @@ TOPIC_SUBREDDITS = {
     # Vídeo enganchón para posts de vídeo (clips virales/satisfying/curiosos).
     # OJO: contenido de terceros — vetar copyright; preferir Pexels si hay duda.
     "video": [
-        # Mapeado a los 7 patrones de las cuentas de referencia (virales variados):
-        "oddlysatisfying",        # satisfying / proceso
-        "nextfuckinglevel",       # ingeniería / talento / skill
-        "BeAmazed",               # asombro
-        "Damnthatsinteresting",   # curioso / ciencia
-        "interestingasfuck",      # curioso
-        "CookingVideos",          # cocina
-        "foodhacks",              # trucos de cocina
-        "GifRecipes",             # recetas
-        "aww",                    # animales tiernos
-        "AnimalsBeingDerps",      # animales graciosos
-        "Awwducational",          # animales + dato curioso
-        "NatureIsFuckingLit",     # naturaleza / animales espectacular
-        "ContagiousLaughter",     # gracioso
-        "MadeMeSmile",            # feel-good / relatable
-        "humansbeingbros",        # gente ayudando (emotivo)
-        "educationalgifs",        # cómo funciona algo (asombro/ciencia)
+        # SOLO ANIMALES GRACIOSOS / ENTRAÑABLES (situaciones divertidas con animales):
+        "AnimalsBeingDerps",      # animales haciendo el tonto
+        "AnimalsBeingJerks",      # animales "gamberros"
+        "Zoomies",                # mascotas corriendo como locas
+        "StartledCats",           # gatos asustados (gracioso)
+        "AnimalsBeingBros",       # animales majos (entrañable)
+        "likeus",                 # animales que actúan como humanos
+        "IllegallySmolCats",      # gatitos diminutos
+        "rarepuppers",            # perros graciosos/tiernos
+        "WhatsWrongWithYourDog",  # perros raros (gracioso)
+        "aww",                    # tierno (incluye gracioso)
+        "AnimalsBeingFunny",
+        "Catswhoyell",            # gatos gritando (gracioso)
     ],
     # Nicho psicología / autoconocimiento (curiosidades de comportamiento, texto):
     "psicologia": [
