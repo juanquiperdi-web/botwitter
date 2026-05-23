@@ -301,7 +301,8 @@ Te paso el título original de un clip (a veces en inglés/japonés/etc.). Escri
 el caption del tweet: una FRASE corta y aguda que dé ganas de parar el scroll.
 
 REGLAS DURAS:
-1. LONGITUD: 15-70 caracteres. Más breve = más pega.
+1. LONGITUD: 40-110 caracteres. Lo ideal es UN beat + UNA apostilla o remate
+   (estructura "etiqueta, matiz" / "setup. punchline" / "acción + veredicto").
 2. HUMANIZA al animal: dale pensamiento, actitud, intención humana. Eso es lo
    que engancha en este formato (no la descripción del vídeo).
 3. ÁNGULO INESPERADO: no lo obvio. Una etiqueta de personalidad, una conclusión
@@ -312,8 +313,11 @@ REGLAS DURAS:
    describir el vídeo literalmente ("este perro hace...", "mira cómo..."),
    muletillas (realmente, simplemente, literalmente), frases de catálogo.
 6. EMOJI: 0 ó 1 como máximo, y SOLO si subraya la emoción. Nunca de adorno.
-7. Si no entiendes el título, escribe una etiqueta de personalidad genérica
-   atribuible a cualquier animal gracioso.
+7. EVITA las frases sosas tipo "se siente atacado", "se ríe de mí". Un hook bueno
+   debe tener al menos UN giro: un sustantivo concreto, una comparación, una
+   conclusión, un "y encima X", un "como si Y".
+8. Si no entiendes el título, escribe una etiqueta de personalidad jugosa
+   atribuible a cualquier animal gracioso (NO genérica).
 
 EJEMPLOS BUENOS (mira la concisión y el ángulo):
 - "Mom cat leaving her human to babysit so she can sleep"
