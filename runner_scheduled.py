@@ -426,6 +426,12 @@ def run_video_post() -> bool:
         if post.get("id") or post.get("media_url"):
             _mark_published(0, post_id=post.get("id", ""),
                             media_key=media_key(post.get("media_url", "")))
+        # 4) Copiar a la cola de TikTok para subida manual desde el PC.
+        try:
+            from tiktok_queue import save_for_tiktok
+            save_for_tiktok(path, caption, source_title=clip_title)
+        except Exception as e:
+            log.warning(f"[TikTok queue] no bloquea, error: {e}")
         return True
     except Exception as e:
         log.error(f"Video post falló: {e}")
