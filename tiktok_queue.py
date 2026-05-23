@@ -19,6 +19,21 @@ log = logging.getLogger(__name__)
 QUEUE_DIR = Path.home() / "tiktok_queue"
 KEEP_DAYS = 7   # días que conserva los .mp4/.txt antes de borrarlos
 
+# CTAs rotativos al final del caption (TikTok → manda gente a X).
+# Misma intención, distintas formas para no sonar repetitivo en el feed.
+TIKTOK_CTAS = [
+    "Síguenos en X → @armentero85022",
+    "Más clips en X → @armentero85022",
+    "🐾 X: @armentero85022",
+    "Cada día más en X → @armentero85022",
+    "Si te ríes, en X hay más → @armentero85022",
+]
+
+
+def _pick_cta() -> str:
+    import random
+    return random.choice(TIKTOK_CTAS)
+
 
 def _slug(text: str) -> str:
     """Slug seguro para nombres de archivo en Windows."""
@@ -60,7 +75,9 @@ def save_for_tiktok(video_path: Path, caption: str, source_title: str = "") -> P
             dest_mp4 = QUEUE_DIR / f"{base}.mp4"
             dest_txt = QUEUE_DIR / f"{base}.txt"
         shutil.copy2(str(video_path), str(dest_mp4))
-        dest_txt.write_text(caption.strip() + "\n", encoding="utf-8")
+        # Caption + CTA rotativo para que TikTok mande gente a X.
+        full_caption = caption.strip() + "\n\n" + _pick_cta() + "\n"
+        dest_txt.write_text(full_caption, encoding="utf-8")
         log.info(f"[TikTok queue] guardado: {dest_mp4.name}")
         return dest_mp4
     except Exception as e:
