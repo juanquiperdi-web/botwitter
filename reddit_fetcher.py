@@ -112,6 +112,13 @@ def _get_media_url(post: dict) -> tuple[Optional[str], str]:
     return None, ""
 
 
+def _video_duration_s(post: dict) -> int:
+    """Duración del vídeo nativo de Reddit en segundos, o 0 si no se conoce."""
+    media = post.get("secure_media") or post.get("media") or {}
+    rv = (media or {}).get("reddit_video") or {}
+    return int(rv.get("duration") or 0)
+
+
 def _fetch_subreddit_hot(subreddit: str, limit: int = 25, time_filter: str = "day") -> list[dict]:
     """Llama a Reddit JSON API anónima para /r/X/hot."""
     try:
@@ -244,7 +251,8 @@ def fetch_post_by_keywords(keywords: str, used_post_ids: set = None,
 def fetch_topic_post(topic: str, used_post_ids: set = None,
                      require_media: bool = True,
                      prefer_video: bool = True,
-                     min_ups: int = 0) -> Optional[dict]:
+                     min_ups: int = 0,
+                     max_duration_s: int = 0) -> Optional[dict]:
     """Devuelve un post 'hot' del tema solicitado con media (vídeo/imagen).
 
     Estrategia con prefer_video=True (default):
@@ -277,7 +285,11 @@ def fetch_topic_post(topic: str, used_post_ids: set = None,
                 media_url, media_type = _get_media_url(p)
                 if media_type != "video":
                     continue
-                log.info(f"Post elegido (VIDEO): r/{sub} ({p.get('ups', 0)} ups) | {p.get('title', '')[:80]}")
+                if max_duration_s > 0:
+                    dur = _video_duration_s(p)
+                    if dur and dur > max_duration_s:
+                        continue
+                log.info(f"Post elegido (VIDEO {_video_duration_s(p)}s): r/{sub} ({p.get('ups', 0)} ups) | {p.get('title', '')[:80]}")
                 return _post_to_dict(p, sub, media_url, media_type)
 
     # PASE 2: cualquier media

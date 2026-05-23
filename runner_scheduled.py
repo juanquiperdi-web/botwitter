@@ -54,18 +54,40 @@ def _today_key() -> str:
     return date.today().isoformat()
 
 
-def _used_post_ids() -> set:
+# Ventana de deduplicación (días). Aplica a reddit_ids y media_keys para evitar
+# repetir el mismo clip (o crossposts del mismo vídeo) durante este periodo.
+DEDUP_DAYS = 14
+
+
+def _used_post_ids(days: int = DEDUP_DAYS) -> set:
+    """IDs de posts de Reddit ya publicados en los últimos N días."""
     state = _load_state()
-    return set(state.get(_today_key() + "_reddit_ids", []))
+    used = set()
+    for k, v in state.items():
+        if k.endswith("_reddit_ids") and isinstance(v, list):
+            used.update(v)
+    return used
 
 
-def _mark_published(slot: int, post_id: str = "") -> None:
+def _used_media_keys(days: int = DEDUP_DAYS) -> set:
+    """Claves de media (p.ej. ID de v.redd.it) ya publicadas en los últimos N días.
+    Sirve para no repetir el MISMO vídeo aunque venga de otro subreddit (crossposts)."""
+    state = _load_state()
+    used = set()
+    for k, v in state.items():
+        if k.endswith("_media_keys") and isinstance(v, list):
+            used.update(v)
+    return used
+
+
+def _mark_published(slot: int, post_id: str = "", media_key: str = "") -> None:
     today = _today_key()
     from datetime import date, timedelta
     today_dt = date.today()
-    valid_prefixes = {(today_dt - timedelta(days=d)).isoformat() for d in range(4)}
+    # Conservamos los últimos DEDUP_DAYS + 1 días para que la ventana de dedup
+    # tenga datos suficientes.
+    valid_prefixes = {(today_dt - timedelta(days=d)).isoformat() for d in range(DEDUP_DAYS + 1)}
     state = _load_state()
-    # Conservamos últimos 4 días
     state = {k: v for k, v in state.items() if any(k.startswith(p) for p in valid_prefixes)}
     state.setdefault(today, [])
     if slot not in state[today]:
@@ -74,6 +96,10 @@ def _mark_published(slot: int, post_id: str = "") -> None:
         state.setdefault(today + "_reddit_ids", [])
         if post_id not in state[today + "_reddit_ids"]:
             state[today + "_reddit_ids"].append(post_id)
+    if media_key:
+        state.setdefault(today + "_media_keys", [])
+        if media_key not in state[today + "_media_keys"]:
+            state[today + "_media_keys"].append(media_key)
     _save_state(state)
 
 
@@ -373,7 +399,13 @@ def run_video_post() -> bool:
     from niche_generator import generate_viral_hook
 
     # 1) Vídeo: Reddit primero (viral, con título), Pexels de respaldo.
-    path, src, post = get_video(prefer="reddit", used_ids=_used_post_ids())
+    # Filtra por IDs Y media (clave de v.redd.it) ya usados en los últimos 14 días.
+    from video_source import media_key
+    path, src, post = get_video(
+        prefer="reddit",
+        used_ids=_used_post_ids(),
+        used_media=_used_media_keys(),
+    )
     if not path:
         log.error("Video: ninguna fuente devolvió vídeo")
         return False
@@ -391,8 +423,9 @@ def run_video_post() -> bool:
     try:
         result = post_tweet(caption, video_path=path)
         log.info(f"Video publicado: id={result} (fuente {src})")
-        if post.get("id"):
-            _mark_published(0, post_id=post["id"])
+        if post.get("id") or post.get("media_url"):
+            _mark_published(0, post_id=post.get("id", ""),
+                            media_key=media_key(post.get("media_url", "")))
         return True
     except Exception as e:
         log.error(f"Video post falló: {e}")

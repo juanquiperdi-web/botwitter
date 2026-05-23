@@ -11,9 +11,21 @@ visuales; el caption lleva el mensaje.
 import logging
 import os
 import random
+import re
 import tempfile
 from pathlib import Path
 from typing import Optional
+
+
+def media_key(url: str) -> str:
+    """Clave normalizada de un vídeo para deduplicar (mismo v.redd.it ID aunque
+    venga de otro subreddit/crosspost o con distintos parámetros)."""
+    if not url:
+        return ""
+    m = re.match(r"https?://v\.redd\.it/([^/?]+)", url)
+    if m:
+        return f"vreddit:{m.group(1)}"
+    return "url:" + url.split("?", 1)[0]
 
 import requests
 
@@ -88,28 +100,36 @@ def get_pexels_video(query: str = "", max_size_mb: int = 14) -> Optional[Path]:
 
 
 # --------------------------- Reddit ---------------------------
-def get_reddit_video(used_ids: set | None = None, attempts: int = 5,
-                     min_ups: int = 3000) -> tuple[Optional[Path], dict]:
-    """Descarga un vídeo viral de los subreddits de vídeo. Filtro por ups (clips
-    YA validados como virales) + reintenta otro post si la descarga falla.
-    Devuelve (ruta, post_dict)."""
+def get_reddit_video(used_ids: set | None = None, attempts: int = 8,
+                     min_ups: int = 3000, max_duration_s: int = 60,
+                     used_media: set | None = None) -> tuple[Optional[Path], dict]:
+    """Descarga un vídeo viral de los subreddits de vídeo.
+    Filtros: ups >= min_ups, duración <= max_duration_s, ID no usado, clave de
+    media no usada (dedup por v.redd.it ID — atrapa crossposts).
+    Reintenta hasta `attempts` clips distintos. Devuelve (ruta, post_dict)."""
     from reddit_fetcher import fetch_topic_post, download_media
     used = set(used_ids or set())
+    used_keys = set(used_media or set())
     for _ in range(attempts):
         post = fetch_topic_post("video", used_post_ids=used,
                                 require_media=True, prefer_video=True,
-                                min_ups=min_ups)
+                                min_ups=min_ups, max_duration_s=max_duration_s)
         if not post or post.get("media_type") != "video":
-            # Si no hay nada con el umbral alto, relájalo en el último intento.
             if min_ups > 0:
-                log.info(f"Sin clips ≥{min_ups} ups; relajando umbral a 1000.")
+                log.info(f"Sin clips ≥{min_ups} ups; relajo umbral a 1000.")
                 min_ups = 1000
                 continue
             break
+        # Dedup por clave de media (mismo vídeo distinto sub/crosspost).
+        mk = media_key(post.get("media_url", ""))
+        if mk and mk in used_keys:
+            log.info(f"Clip ya publicado recientemente ({mk[:30]}); buscando otro.")
+            if post.get("id"):
+                used.add(post["id"])
+            continue
         path = download_media(post["media_url"], "video")
         if path:
             return path, post
-        # Descarga fallida: excluimos este post y probamos otro.
         if post.get("id"):
             used.add(post["id"])
         log.info(f"Descarga falló para r/{post.get('subreddit','')}; reintento otro clip.")
@@ -118,13 +138,14 @@ def get_reddit_video(used_ids: set | None = None, attempts: int = 5,
 
 # --------------------------- Orquestador ---------------------------
 def get_video(prefer: str = "reddit", used_ids: set | None = None,
-              pexels_query: str = "") -> tuple[Optional[Path], str, dict]:
+              pexels_query: str = "",
+              used_media: set | None = None) -> tuple[Optional[Path], str, dict]:
     """Devuelve (ruta_video, fuente, meta). prefer = 'reddit' | 'pexels'.
     Intenta la fuente preferida y cae a la otra."""
     order = ["reddit", "pexels"] if prefer == "reddit" else ["pexels", "reddit"]
     for src in order:
         if src == "reddit":
-            path, post = get_reddit_video(used_ids)
+            path, post = get_reddit_video(used_ids=used_ids, used_media=used_media)
             if path:
                 return path, "reddit", post
         else:
