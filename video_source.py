@@ -88,16 +88,23 @@ def get_pexels_video(query: str = "", max_size_mb: int = 14) -> Optional[Path]:
 
 
 # --------------------------- Reddit ---------------------------
-def get_reddit_video(used_ids: set | None = None, attempts: int = 5) -> tuple[Optional[Path], dict]:
-    """Descarga un vídeo viral de los subreddits de vídeo. Reintenta con otro post
-    si la descarga falla (clips rotos/grandes), para no caer a Pexels por un fallo
-    puntual. Devuelve (ruta, post_dict)."""
+def get_reddit_video(used_ids: set | None = None, attempts: int = 5,
+                     min_ups: int = 3000) -> tuple[Optional[Path], dict]:
+    """Descarga un vídeo viral de los subreddits de vídeo. Filtro por ups (clips
+    YA validados como virales) + reintenta otro post si la descarga falla.
+    Devuelve (ruta, post_dict)."""
     from reddit_fetcher import fetch_topic_post, download_media
     used = set(used_ids or set())
     for _ in range(attempts):
         post = fetch_topic_post("video", used_post_ids=used,
-                                require_media=True, prefer_video=True)
+                                require_media=True, prefer_video=True,
+                                min_ups=min_ups)
         if not post or post.get("media_type") != "video":
+            # Si no hay nada con el umbral alto, relájalo en el último intento.
+            if min_ups > 0:
+                log.info(f"Sin clips ≥{min_ups} ups; relajando umbral a 1000.")
+                min_ups = 1000
+                continue
             break
         path = download_media(post["media_url"], "video")
         if path:

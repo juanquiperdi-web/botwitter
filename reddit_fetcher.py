@@ -243,7 +243,8 @@ def fetch_post_by_keywords(keywords: str, used_post_ids: set = None,
 
 def fetch_topic_post(topic: str, used_post_ids: set = None,
                      require_media: bool = True,
-                     prefer_video: bool = True) -> Optional[dict]:
+                     prefer_video: bool = True,
+                     min_ups: int = 0) -> Optional[dict]:
     """Devuelve un post 'hot' del tema solicitado con media (vídeo/imagen).
 
     Estrategia con prefer_video=True (default):
@@ -270,6 +271,8 @@ def fetch_topic_post(topic: str, used_post_ids: set = None,
             posts = _fetch_subreddit_hot(sub, limit=25)
             for p in posts:
                 if not _valid_post(p, used_post_ids):
+                    continue
+                if (p.get("ups", 0) or 0) < min_ups:
                     continue
                 media_url, media_type = _get_media_url(p)
                 if media_type != "video":
